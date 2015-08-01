@@ -1,0 +1,56 @@
+## OS
+.DS_Store
+Icon?
+nohup.out
+.bak
+
+## EDITORS
+\#*
+.\#*
+*~
+*.swp
+REVISION
+TAGS*
+tmtags
+*_flymake.*
+*_flymake
+*.tmproj
+.project
+.settings
+
+## COMPILED
+a.out
+*.o
+*.pyc
+*.so
+
+## OTHER SCM
+.bzr
+.hg
+.svn
+
+## PROJECT::GENERAL
+coverage
+rdoc
+doc
+pkg
+.yardoc
+*private*
+
+## PROJECT::SPECIFIC
+
+output
+images/orig
+logs
+artifacts
+output-long
+output-scribe
+images/*-noversion
+Backup\ *
+images/map_grid_cells-osm
+images/map_grid_cells
+tmp/*
+*.log
+\~\$*
+
+code/all-*.pig

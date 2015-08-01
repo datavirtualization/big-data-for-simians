@@ -1,0 +1,447 @@
+////
+*Comment* Amy done, comments sent.
+////
+
+[[hadoop_basics]]
+== Hadoop Basics
+
+++++
+<remark>Please make sure the Chimpanzee and Elephant Start a Business big does NOT appear before this Introduction.</remark>
+++++
+
+Hadoop is a large and complex beast. It can be bewildering to even begin to use the system, and so in this chapter we're going to purposefully charge through the least you need to know to launch jobs and manage data. In this book, we will try to keep things as simple as possible. For every one of its many modes options and configurations that is essential, there are many more that are distracting or even dangerous. The most important optimizations you can make come from designing efficient workflows, and even more so from knowing when to spend highly valuable programmer time to reduce compute time.
+
+In this chapter, we will equip you with two things: the necessary mechanics of working with Hadoop, and a physical intuition for how data and computation move around the cluster during a job. 
+
+The key to mastering Hadoop is an intuitive, physical understanding of how data moves around a Hadoop cluster. Shipping data from one machine to another -- even from one location on disk to another -- is outrageously costly, and in the vast majority of cases dominates the cost of your job. We'll describe at a high level how Hadoop organizes data and assigns tasks across compute nodes so that as little data as possible is set in motion with both a story featuring a physical analogy and by following an example job through its full lifecycle. More importantly, we'll show you how to read a job's Hadoop dashboard to understand how much it cost and why. Your goal for this chapter is to take away a basic understanding of how Hadoop distributes tasks and data, and the ability to run a job and see what's going on with it. As you run more and more jobs through the remaining course of the book, it is the latter ability that will cement your intuition.
+
+What does Hadoop do, and why should we learn about it? Hadoop enables the storage and processing of large amounts of data. Indeed, it is Apache Hadoop that stands at the middle of the 'Big Data' trend. The Hadoop Distributed Filesystem (HDFS) is the platform that enabled cheap storage of vast amounts of data (up to petabytes and beyond) cheaply using affordable, commodity machines. Before Hadoop, there simply wasn't a place to store terabytes and petabytes of data in a way that it could be easily accessed for processing. Hadoop changed everything.
+
+Throughout this book we will teach you the mechanics of operating Hadoop, but first you need to understand the basics of how the Hadoop filesystem and MapReduce work together to create a computing platform. Along these lines, let's kick things off by making friends with the good folks at Elephant and Chimpanzee, Inc. Their story should give you an essential physical understanding for the problems Hadoop addresses and how it solves them.
+
+.Chimpanzee and Elephant Start a Business
+******
+
+++++
+<remark>Please make sure this DOES NOT appear at the start of the chapter, before the preceding introduction.</remark>
+++++
+
+A few years back, two friends -- JT, a gruff chimpanzee, and Nanette, a meticulous matriarch elephant -- decided to start a business. As you know, Chimpanzees love nothing more than sitting at keyboards processing and generating text. Elephants have a prodigious ability to store and recall information, and will carry huge amounts of cargo with great determination. This combination of skills impressed a local publishing company enough to earn their first contract, so Chimpanzee and Elephant, Incorporated (C&E for short) was born.
+
+The publishing firm’s project was to translate the works of Shakespeare into every language known to man, so JT and Nanette devised the following scheme. Their crew set up a large number of cubicles, each with one elephant-sized desk and several chimp-sized desks, and a command center where JT and Nanette can coordinate the action.
+
+As with any high-scale system, each member of the team has a single responsibility to perform. The task of each chimpanzee is simply to read a set of passages and type out the corresponding text in a new language. JT, their foreman, efficiently assigns passages to chimpanzees, deals with absentee workers and sick days, and reports progress back to the customer. The task of each librarian elephant is to maintain a neat set of scrolls, holding either a passage to translate or some passage's translated result. Nanette serves as chief librarian. She keeps a card catalog listing, for every book, the location and essential characteristics of the various scrolls that maintain its contents. 
+
+When workers clock in for the day, they check with JT, who hands off the day's translation manual and the name of a passage to translate. Throughout the day the chimps radio progress reports in to JT; if their assigned passage is complete, JT will specify the next passage to translate.
+
+If you were to walk by a cubicle mid-workday, you would see a highly-efficient interplay between chimpanzee and elephant, ensuring the expert translators rarely had a wasted moment. As soon as JT radios back what passage to translate next, the elephant hands it across. The chimpanzee types up the translation on a new scroll, hands it back to its librarian partner and radios for the next passage. The librarian runs the scroll through a fax machine to send it to two of its counterparts at other cubicles, producing the redundant, triplicate copies Nanette's scheme requires. 
+
+The librarians in turn notify Nanette which copies of which translations they hold, which helps Nanette maintain her card catalog. Whenever a customer comes calling for a translated passage, Nanette fetches all three copies and ensures they are consistent. This way, the work of each monkey can be compared to ensure its integrity, and documents can still be retrieved even if a cubicle radio fails.
+
+The fact that each chimpanzee's work is independent of any other's -- no interoffice memos, no meetings, no requests for documents from other departments -- made this the perfect first contract for the C&E crew. JT and Nanette, however, were cooking up a new way to put their million-chimp army to work, one that could radically streamline the processes of any modern paperful office footnote:[Some chimpanzee philosophers have put forth the fanciful conceit of a "paper-less" office, requiring impossibilities like a sea of electrons that do the work of a chimpanzee, and disks of magnetized iron that would serve as scrolls. These ideas are, of course, pure lunacy!]. JT and Nanette would soon have the chance of a lifetime to try it out for a customer in the far north with a big, big problem.
+******
+
+=== Map-only Jobs: Process Records Individually ===
+
+As you'd guess, the way Chimpanzee and Elephant organize their files and workflow corresponds directly with how Hadoop handles data and computation under the hood. We can now use it to walk you through an example in detail.
+
+The bags on trees scheme represents transactional relational database systems. These are often the systems that Hadoop data processing can augment or replace. The "NoSQL" movement (Not Only SQL) of which Hadoop is a part is about going beyond the relational database as a one-size-fits-all tool, and using different distributed systems that better suit a given problem.
+
+Nanette is the Hadoop http://wiki.apache.org/hadoop/NameNode[NameNode]. The NameNode manages the Hadoop Distributed Filesystem (HDFS). It stores the directory tree structure of the filesystem (the card catalog), and references to the data nodes for each file (the librarians). You'll note that Nanette worked with data stored in triplicate. Data on Hadoop's Distributed Filesystem is duplicated three times to ensure reliability. In a large enough system (thousands of nodes in a petabyte Hadoop cluster), individual nodes fail every day. In that case, HDFS automatically creates a new duplicate for all the files that were on the failed node.
+
+JT is the http://wiki.apache.org/hadoop/JobTracker[JobTracker]. He coordinates the work of individual MapReduce tasks into a cohesive whole system. The jobtracker is responsible for launching and monitoring the individual tasks of a mapreduce job, which run on the nodes that contain the data a particular job reads. MapReduce jobs are divided into a map phase in which data is read, and a reduce phase, in which data is aggregated by key and processed again. For now we'll cover map-only jobs. In the next chapter we'll introduce reduce.
+
+Note that in YARN (Hadoop 2.0), the terminology changed. The JobTracker is called the Resource Manager, and nodes are managed by Node Managers. They run arbitrary apps via containers. In YARN, MapReduce is just one kind of computing framework. Hadoop has become an application platform. Confused? So are we. YARN's terminology is something of a disaster, so we'll stick with Hadoop 1.0 terminology.
+
+=== Pig Latin Map-Only Job ===
+
+To illustrate how Hadoop works, lets dive into some code with the simplest example possible. We may not be as clever as JT's multilingual chimpanzees, but even we can translate text into a language we'll call _Igpay Atinlay_. footnote:[Sharp-eyed readers will note that this language is really called _Pig Latin._ That term has another name in the Hadoop universe, though, so we've chosen to call it Igpay Atinlay -- Pig Latin for "Pig Latin".]. For the unfamiliar, here's how to http://en.wikipedia.org/wiki/Pig_latin#Rules[translate standard English into Igpay Atinlay]:
+
+* If the word begins with a consonant-sounding letter or letters, move them to the end of the word adding "ay": "happy" becomes "appy-hay", "chimp" becomes "imp-chay" and "yes" becomes "es-yay".
+* In words that begin with a vowel, just append the syllable "way": "another" becomes "another-way", "elephant" becomes "elephant-way".
+
+<<pig_latin_translator>>  is our first Hadoop job, a program that translates plain text files into Igpay Atinlay. This is a Hadoop job stripped to its barest minimum, one that does just enough to each record that you believe it happened but with no distractions. That makes it convenient to learn how to launch a job; how to follow its progress; and where Hadoop reports performance metrics such as run time and amount of data moved.  What's more, the very fact that it's trivial makes it one of the most important examples to run. For comparable input and output size, no regular Hadoop job can out-perform this one in practice, so it's a key reference point to carry in mind.
+
+We've written this example in Python, a language that has become the lingua franca of data science. You can run it over a text file from the command line -- or run it over petabytes on a cluster (should you for whatever reason have a petabyte of text crying out for pig-latinizing).
+
+[[pig_latin_translator]]
+.Igpay Atinlay translator, pseudocode
+----
+for each line,
+  recognize each word in the line
+  and change it as follows:
+    separate the head consonants (if any) from the tail of the word
+    if there were no initial consonants, use 'w' as the head
+    give the tail the same capitalization as the word
+    thus changing the word to "tail-head-ay"
+  end
+  having changed all the words, emit the latinized version of the line
+end
+----
+
+[[pig_latin_translator]]
+.Igpay Atinlay translator (ch_01/pig_latin.py)
+----
+#!/usr/bin/python
+
+import sys, re
+
+WORD_RE = re.compile(r"\b([bcdfghjklmnpqrstvwxz]*)([\w\']+)")
+CAPITAL_RE = re.compile(r"[A-Z]")
+
+def mapper(line):
+  words = WORD_RE.findall(line)
+  pig_latin_words = []
+  for word in words:
+    original_word = ''.join(word)
+    head, tail = word
+    head = 'w' if not head else head
+    pig_latin_word = tail + head + 'ay'
+    if CAPITAL_RE.match(pig_latin_word):
+      pig_latin_word = pig_latin_word.lower().capitalize() 
+    else: 
+      pig_latin_word = pig_latin_word.lower()
+    pig_latin_words.append(pig_latin_word)
+  return " ".join(pig_latin_words)
+
+if __name__ == '__main__':
+  for line in sys.stdin:
+    print mapper(line)
+
+----
+
+It's best to begin developing jobs locally on a subset of data, because they are faster and cheaper to run. To run the Python script locally, enter this into your terminal's command line:
+
+------
+cat /data/gold/text/gift_of_the_magi.txt|python examples/ch_01/pig_latin.py
+------
+
+The output should look like this:
+------
+Theway agimay asway youway owknay ereway iseway enmay onderfullyway iseway enmay owhay oughtbray
+iftsgay otay ethay Babeway inway ethay angermay Theyway inventedway ethay artway ofway ivinggay
+Christmasway esentspray Beingway iseway eirthay iftsgay ereway onay oubtday iseway onesway
+ossiblypay earingbay ethay ivilegepray ofway exchangeway inway asecay ofway uplicationday Andway
+erehay Iway avehay amelylay elatedray otay youway ethay uneventfulway oniclechray ofway otway
+oolishfay ildrenchay inway away atflay owhay ostmay unwiselyway acrificedsay orfay eachway otherway
+ethay eatestgray easurestray ofway eirthay ousehay Butway inway away astlay ordway otay ethay iseway
+ofway esethay aysday etlay itway ebay aidsay atthay ofway allway owhay ivegay iftsgay esethay otway ereway
+ethay isestway Ofway allway owhay ivegay andway eceiveray iftsgay uchsay asway eythay areway isestway
+Everywhereway eythay areway isestway Theyway areway ethay agimay
+
+------
+
+That's what it looks like when run locally. Let's run it on a real Hadoop cluster to see how it works when an elephant is in charge.
+
+NOTE: There are even more reasons why it's best to begin developing jobs locally on a subset of data than just faster and cheaper. What's more, though, extracting a meaningful subset of tables also forces you to get to know your data and its relationships. And since all the data is local, you're forced into the good practice of first addressing "what would I like to do with this data" and only then considering "how shall I do so efficiently". Beginners often want to believe the opposite, but experience has taught us that it's nearly always worth the upfront investment to prepare a subset, and not to think about efficiency from the beginning.
+
+=== Setting up a Docker Hadoop Cluster ===
+
+We've prepared a docker image you can use to create a Hadoop environment with Pig and Python already installed, and with the example data already mounted on a drive. You can begin by checking out the code. If you aren't familiar with Git, check out the [Git Home Page](http://git-scm.com/) and install git. Then proceed to clone the example code git repository, which includes the docker setup:
+
+-----
+git clone --recursive http://github.com/bd4c/big_data_for_chimps-code.git bd4c-code
+cd bd4c-code
+ls
+-----
+
+You should see:
+
+-----
+Gemfile		README.md	cluster		docker		examples	junk		notes		numbers10k.txt	vendor
+-----
+
+Now you will need to install [VirtualBox](https://www.virtualbox.org/) for your platform, which you can download [here](https://www.virtualbox.org/wiki/Downloads). Next you will need to install Boot2Docker, which you can find [here](https://docs.docker.com/installation/). Run boot2docker from your OS Menu, which (on OS X or Linux) will bring up a shell:
+
+image:images/boot2docker.png[Boot2Docker Shell]
+
+We use Ruby scripts to setup our docker environment, so you will need Ruby v >1.9.2 or >2.0. Returning to your original command prompt, from inside the `bd4c-code` directory, lets install the Ruby libraries needed to setup our docker images.
+
+-----
+gem install bundler # you may need to sudo
+bundle install
+-----
+
+Next, cd into the `cluster` directory, and repeat `bundle install`:
+
+-----
+cd cluster
+bundle install
+-----
+
+You can now run docker commands against this VirtualBox VM running the docker daemon. Lets start by setting up port forwarding from localhost to our docker VM. From the `cluster` directory:
+
+-----
+boot2docker down
+bundle exec rake docker:open_ports
+-----
+
+While we have the docker vm down, we're going to need to make an adjustment in VirtualBox. We need to increase the amount of RAM given to the VM to at least 4GB. Run Virtualbox from your OS's GUI, and you should see something like this:
+
+image:images/virtualbox_screen_1.png[Virtualbox GUI]
+
+Select the boot2docker VM, and then click Settings. Now select the System tab, and adjust the RAM slider right until it reads at least `4096 MB`. Click Ok.
+
+image:images/virtualbox_screen_2.png[Virtualbox Settings GUI]
+
+Now you can close VirtualBox, and bring boot2docker back up:
+
+-----
+boot2docker up
+boot2docker shellinit
+-----
+
+This command will print something like:
+
+-----
+Writing /Users/rjurney/.boot2docker/certs/boot2docker-vm/ca.pem
+Writing /Users/rjurney/.boot2docker/certs/boot2docker-vm/cert.pem
+Writing /Users/rjurney/.boot2docker/certs/boot2docker-vm/key.pem
+    export DOCKER_TLS_VERIFY=1
+    export DOCKER_HOST=tcp://192.168.59.103:2376
+    export DOCKER_CERT_PATH=/Users/rjurney/.boot2docker/certs/boot2docker-vm
+-----
+
+Now is a good time to put these lines in your `~/.bashrc` file, substituting your home directory for `<home_directory>`:
+
+----
+export DOCKER_TLS_VERIFY=1
+export DOCKER_IP=192.168.59.103
+export DOCKER_HOST=tcp://$DOCKER_IP:2376
+export DOCKER_CERT_PATH=/<home_directory>/.boot2docker/certs/boot2docker-vm
+-----
+
+You can achieve that, and update your current environment, via:
+
+-----
+echo 'export DOCKER_TLS_VERIFY=1' >> ~/.bashrc
+echo 'export DOCKER_IP=192.168.59.103' >> ~/.bashrc
+echo 'export DOCKER_HOST=tcp://$DOCKER_IP:2376' >> ~/.bashrc
+echo 'export DOCKER_CERT_PATH=/<home_directory>/.boot2docker/certs/boot2docker-vm' >> ~/.bashrc
+source ~/.bashrc
+-----
+
+Check that these environment variables are set and that the docker client can connect via:
+
+-----
+echo $DOCKER_IP
+echo $DOCKER_HOST
+bundle exec rake ps
+-----
+
+Now you're ready to setup the docker images. This can take a while, so brew a cup of tea after running:
+
+-----
+bundle exec rake images:pull
+-----
+
+Once done, you should see:
+
+-----
+Status: Image is up to date for blalor/docker-hosts:latest
+-----
+
+Now, we need to do some minor setup on the boot2docker virtual machine. Change terminals to the boot2docker window, or from another shell run `boot2docker ssh`, and run these commands:
+
+-----
+mkdir -p          /tmp/bulk/hadoop       # view all logs there
+sudo touch        /var/lib/docker/hosts  # so that docker-hosts can make container hostnames resolvable
+sudo chmod 0644   /var/lib/docker/hosts
+sudo chown nobody /var/lib/docker/hosts
+exit
+-----
+
+Now exit boot2docker shell. 
+
+Back in the clusters directory, it is time to start the cluster helpers, which setup hostnames among the containers.
+
+-----
+bundle exec rake helpers:run
+-----
+
+If everything worked, you can now run `cat /var/lib/docker/hosts` on the boot2docker host, and it should be filled with information. Running `bundle exec rake ps` should show containers for `host_filer` and nothing else.
+
+Now lets setup our example data. Run:
+
+-----
+bundle exec rake data:create show_output=true
+-----
+
+Now you can run `bundle exec rake ps` and you should see five containers, all stopped. Start these containers using:
+
+-----
+bundle exec rake hadoop:run
+-----
+
+This will start the Hadoop containers. You can stop/start them with:
+
+-----
+bundle exec rake hadoop:stop
+bundle exec rake hadoop:start
+-----
+
+Now, ssh to your new Hadoop cluster:
+
+-----
+ssh -i insecure_key.pem chimpy@$DOCKER_IP -p 9022 # Password chimpy
+-----
+
+You can see that the example data is available both on the local filesystem:
+
+-----
+chimpy@lounge:~$ ls /data/gold/
+airline_flights/  demographic/  geo/  graph/  helpers/  serverlogs/  sports/  text/  twitter/  wikipedia/  CREDITS.md  README-archiver.md  README.md
+-----
+
+Now you can run Pig, in local mode: 
+
+-----
+pig -l /tmp -x local
+-----
+
+And we're off!
+
+==== Run the Job ====
+
+First, let's test on the same tiny little file we used at the command-line. This command does not process any data but instead instructs _Hadoop_ to process the data, and so its output will contain information on how the job is progressing.
+
+// Make sure to notice how much _longer_ it takes this elephant to squash a flea than it took to run without Hadoop.
+
+------
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -Dmapreduce.cluster.local.dir=/home/chimpy/code -fs local -jt local -file ./examples/ch_01/pig_latin.py -mapper ./examples/ch_01/pig_latin.py -input /data/gold/text/gift_of_the_magi.txt -output ./translation.out
+------
+
+You should see something like this:
+
+------
+15/03/10 20:20:38 WARN fs.FileSystem: "local" is a deprecated filesystem name. Use "file:///" instead.
+15/03/10 20:20:38 WARN streaming.StreamJob: -file option is deprecated, please use generic option -files instead.
+packageJobJar: [./examples/ch_01/pig_latin.py] [] /tmp/streamjob6991515537124916301.jar tmpDir=null
+15/03/10 20:20:39 INFO Configuration.deprecation: session.id is deprecated. Instead, use dfs.metrics.session-id
+15/03/10 20:20:39 INFO jvm.JvmMetrics: Initializing JVM Metrics with processName=JobTracker, sessionId=
+15/03/10 20:20:39 INFO jvm.JvmMetrics: Cannot initialize JVM Metrics with processName=JobTracker, sessionId= - already initialized
+15/03/10 20:20:40 INFO mapred.FileInputFormat: Total input paths to process : 1
+15/03/10 20:20:40 INFO mapreduce.JobSubmitter: number of splits:1
+15/03/10 20:20:40 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_local292160259_0001
+15/03/10 20:20:40 WARN conf.Configuration: file:/tmp/hadoop-chimpy/mapred/staging/chimpy292160259/.staging/job_local292160259_0001/job.xml:an attempt to override final parameter: mapreduce.job.end-notification.max.retry.interval;  Ignoring.
+15/03/10 20:20:40 WARN conf.Configuration: file:/tmp/hadoop-chimpy/mapred/staging/chimpy292160259/.staging/job_local292160259_0001/job.xml:an attempt to override final parameter: mapreduce.job.end-notification.max.attempts;  Ignoring.
+15/03/10 20:20:40 INFO mapred.LocalDistributedCacheManager: Localized file:/home/chimpy/code/examples/ch_01/pig_latin.py as file:/home/chimpy/code/1426018840369/pig_latin.py
+15/03/10 20:20:40 WARN conf.Configuration: file:/home/chimpy/code/localRunner/chimpy/job_local292160259_0001/job_local292160259_0001.xml:an attempt to override final parameter: mapreduce.job.end-notification.max.retry.interval;  Ignoring.
+15/03/10 20:20:40 WARN conf.Configuration: file:/home/chimpy/code/localRunner/chimpy/job_local292160259_0001/job_local292160259_0001.xml:an attempt to override final parameter: mapreduce.job.end-notification.max.attempts;  Ignoring.
+15/03/10 20:20:40 INFO mapreduce.Job: The url to track the job: http://localhost:8080/
+15/03/10 20:20:40 INFO mapred.LocalJobRunner: OutputCommitter set in config null
+15/03/10 20:20:40 INFO mapreduce.Job: Running job: job_local292160259_0001
+15/03/10 20:20:40 INFO mapred.LocalJobRunner: OutputCommitter is org.apache.hadoop.mapred.FileOutputCommitter
+15/03/10 20:20:40 INFO mapred.LocalJobRunner: Waiting for map tasks
+15/03/10 20:20:40 INFO mapred.LocalJobRunner: Starting task: attempt_local292160259_0001_m_000000_0
+15/03/10 20:20:40 INFO mapred.Task:  Using ResourceCalculatorProcessTree : [ ]
+15/03/10 20:20:40 INFO mapred.MapTask: Processing split: file:/data/gold/text/gift_of_the_magi.txt:0+11224
+15/03/10 20:20:40 INFO mapred.MapTask: numReduceTasks: 1
+15/03/10 20:20:40 INFO mapred.MapTask: (EQUATOR) 0 kvi 26214396(104857584)
+15/03/10 20:20:40 INFO mapred.MapTask: mapreduce.task.io.sort.mb: 100
+15/03/10 20:20:40 INFO mapred.MapTask: soft limit at 83886080
+15/03/10 20:20:40 INFO mapred.MapTask: bufstart = 0; bufvoid = 104857600
+15/03/10 20:20:40 INFO mapred.MapTask: kvstart = 26214396; length = 6553600
+15/03/10 20:20:40 INFO mapred.MapTask: Map output collector class = org.apache.hadoop.mapred.MapTask$MapOutputBuffer
+15/03/10 20:20:40 INFO streaming.PipeMapRed: PipeMapRed exec [/home/chimpy/code/./pig_latin.py]
+15/03/10 20:20:40 INFO streaming.PipeMapRed: R/W/S=1/0/0 in:NA [rec/s] out:NA [rec/s]
+15/03/10 20:20:40 INFO streaming.PipeMapRed: R/W/S=10/0/0 in:NA [rec/s] out:NA [rec/s]
+15/03/10 20:20:40 INFO streaming.PipeMapRed: R/W/S=100/0/0 in:NA [rec/s] out:NA [rec/s]
+15/03/10 20:20:41 INFO streaming.PipeMapRed: Records R/W=225/1
+15/03/10 20:20:41 INFO streaming.PipeMapRed: MRErrorThread done
+15/03/10 20:20:41 INFO streaming.PipeMapRed: mapRedFinished
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: 
+15/03/10 20:20:41 INFO mapred.MapTask: Starting flush of map output
+15/03/10 20:20:41 INFO mapred.MapTask: Spilling map output
+15/03/10 20:20:41 INFO mapred.MapTask: bufstart = 0; bufend = 16039; bufvoid = 104857600
+15/03/10 20:20:41 INFO mapred.MapTask: kvstart = 26214396(104857584); kvend = 26213500(104854000); length = 897/6553600
+15/03/10 20:20:41 INFO mapred.MapTask: Finished spill 0
+15/03/10 20:20:41 INFO mapred.Task: Task:attempt_local292160259_0001_m_000000_0 is done. And is in the process of committing
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: Records R/W=225/1
+15/03/10 20:20:41 INFO mapred.Task: Task 'attempt_local292160259_0001_m_000000_0' done.
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: Finishing task: attempt_local292160259_0001_m_000000_0
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: map task executor complete.
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: Waiting for reduce tasks
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: Starting task: attempt_local292160259_0001_r_000000_0
+15/03/10 20:20:41 INFO mapred.Task:  Using ResourceCalculatorProcessTree : [ ]
+15/03/10 20:20:41 INFO mapred.ReduceTask: Using ShuffleConsumerPlugin: org.apache.hadoop.mapreduce.task.reduce.Shuffle@4c02a062
+15/03/10 20:20:41 INFO mapreduce.Job: Job job_local292160259_0001 running in uber mode : false
+15/03/10 20:20:41 INFO mapreduce.Job:  map 100% reduce 0%
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: MergerManager: memoryLimit=652528832, maxSingleShuffleLimit=163132208, mergeThreshold=430669056, ioSortFactor=10, memToMemMergeOutputsThreshold=10
+15/03/10 20:20:41 INFO reduce.EventFetcher: attempt_local292160259_0001_r_000000_0 Thread started: EventFetcher for fetching Map Completion Events
+15/03/10 20:20:41 INFO reduce.LocalFetcher: localfetcher#1 about to shuffle output of map attempt_local292160259_0001_m_000000_0 decomp: 16491 len: 16495 to MEMORY
+15/03/10 20:20:41 INFO reduce.InMemoryMapOutput: Read 16491 bytes from map-output for attempt_local292160259_0001_m_000000_0
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: closeInMemoryFile -> map-output of size: 16491, inMemoryMapOutputs.size() -> 1, commitMemory -> 0, usedMemory ->16491
+15/03/10 20:20:41 INFO reduce.EventFetcher: EventFetcher is interrupted.. Returning
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: 1 / 1 copied.
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: finalMerge called with 1 in-memory map-outputs and 0 on-disk map-outputs
+15/03/10 20:20:41 INFO mapred.Merger: Merging 1 sorted segments
+15/03/10 20:20:41 INFO mapred.Merger: Down to the last merge-pass, with 1 segments left of total size: 16488 bytes
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: Merged 1 segments, 16491 bytes to disk to satisfy reduce memory limit
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: Merging 1 files, 16495 bytes from disk
+15/03/10 20:20:41 INFO reduce.MergeManagerImpl: Merging 0 segments, 0 bytes from memory into reduce
+15/03/10 20:20:41 INFO mapred.Merger: Merging 1 sorted segments
+15/03/10 20:20:41 INFO mapred.Merger: Down to the last merge-pass, with 1 segments left of total size: 16488 bytes
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: 1 / 1 copied.
+15/03/10 20:20:41 INFO mapred.Task: Task:attempt_local292160259_0001_r_000000_0 is done. And is in the process of committing
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: 1 / 1 copied.
+15/03/10 20:20:41 INFO mapred.Task: Task attempt_local292160259_0001_r_000000_0 is allowed to commit now
+15/03/10 20:20:41 INFO output.FileOutputCommitter: Saved output of task 'attempt_local292160259_0001_r_000000_0' to file:/home/chimpy/code/translation.out/_temporary/0/task_local292160259_0001_r_000000
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: reduce > reduce
+15/03/10 20:20:41 INFO mapred.Task: Task 'attempt_local292160259_0001_r_000000_0' done.
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: Finishing task: attempt_local292160259_0001_r_000000_0
+15/03/10 20:20:41 INFO mapred.LocalJobRunner: reduce task executor complete.
+15/03/10 20:20:41 INFO mapreduce.Job:  map 100% reduce 100%
+15/03/10 20:20:41 INFO mapreduce.Job: Job job_local292160259_0001 completed successfully
+15/03/10 20:20:41 INFO mapreduce.Job: Counters: 33
+	File System Counters
+		FILE: Number of bytes read=58158
+		FILE: Number of bytes written=581912
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+	Map-Reduce Framework
+		Map input records=225
+		Map output records=225
+		Map output bytes=16039
+		Map output materialized bytes=16495
+		Input split bytes=93
+		Combine input records=0
+		Combine output records=0
+		Reduce input groups=180
+		Reduce shuffle bytes=16495
+		Reduce input records=225
+		Reduce output records=225
+		Spilled Records=450
+		Shuffled Maps =1
+		Failed Shuffles=0
+		Merged Map outputs=1
+		GC time elapsed (ms)=11
+		CPU time spent (ms)=0
+		Physical memory (bytes) snapshot=0
+		Virtual memory (bytes) snapshot=0
+		Total committed heap usage (bytes)=441450496
+	Shuffle Errors
+		BAD_ID=0
+		CONNECTION=0
+		IO_ERROR=0
+		WRONG_LENGTH=0
+		WRONG_MAP=0
+		WRONG_REDUCE=0
+	File Input Format Counters 
+		Bytes Read=11224
+	File Output Format Counters 
+		Bytes Written=16175
+15/03/10 20:20:41 INFO streaming.StreamJob: Output directory: ./translation.out
+------
+
+This is the output of the Hadoop streaming jar as it transmits your files and runs them on the cluster.
+
+=== Wrapping Up
+
+In this chapter, we've equipped you with two things: the necessary mechanics of working with Hadoop, and a physical intuition for how data and computation move around the cluster during a job. We started with a story about J.T. and Nanette, and learned about the Hadoop Job Tracker, Namenode and file system. We proceeded with a Pig Latin example, and ran it on a real Hadoop cluster.
+
+We've covered the mechanics of the Hadoop Distributed Filesystem (HDFS) and the map-only portion of MapReduce, and we've setup a virtual Hadoop cluster and run a single job on it. While we are just beginning, we're already in good shape to learn more about Hadoop. 
+
+In the next chapter, you'll learn about map/reduce jobs -- the full power of Hadoop's processing paradigm. Let's start by joining JT and Nannette with their next client.
+

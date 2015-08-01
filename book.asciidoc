@@ -1,0 +1,25 @@
+= Big Data for Chimps
+
+include::Ch00-preface.asciidoc[]
+
+include::Part_I_Intro.asciidoc[]
+
+include::Ch01-hadoop_basics.asciidoc[]
+
+include::Ch02-map_reduce.asciidoc[]
+
+include::Ch03-introducing-baseball-data.asciidoc[]
+
+include::Ch04-introduction_to_pig.asciidoc[]
+
+include::Part_II-patterns.asciidoc[]
+
+include::Ch05-map_only_patterns.asciidoc[]
+
+include::Ch06-grouping_patterns.asciidoc[]
+
+include::Ch07-joining_patterns.asciidoc[]
+
+include::Ch08-ordering_patterns.asciidoc[]
+
+include::Ch09-uniquing_patterns.asciidoc[]
