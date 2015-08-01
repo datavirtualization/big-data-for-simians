@@ -1,6 +1,6 @@
 -- ===========================================================================
 --
--- Dump (slightly) simplified records for Big Data for Chimps sample code
+-- Dump (slightly) simplified records for Big Data for Simians sample code
 --
 -- ===========================================================================
 

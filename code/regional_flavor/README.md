@@ -1,6 +1,6 @@
 # Find the Regional Flavor of topics using Geolocated Wikipedia Articles
 
-(Chapter 1 of "Big Data for Chimps")
+(Chapter 1 of "Big Data for Simians")
 
 1. article -> wordbag
 2. join on page data to get geolocation

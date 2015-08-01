@@ -78,7 +78,7 @@ FRANK
 
 The first note, from a very good girl who is thoughtful for her brother, creates two toyforms: one for Joe's robot and one for Julia's doll. The second note is spam, so it creates no toyforms. The third one yields a toyform directing Santa to put coal in Frank's stocking.
 
-image::images/chimps_and_elves/bchm_0203.png[Chimps read each letter]
+image::images/chimps_and_elves/bchm_0203.png[Simians read each letter]
 image::images/chimps_and_elves/bchm_0204.png[Letters become toyforms]
 
 Processing letters in this way represents the map phase of a map/reduce job. The work performed in a map phase could be anything: translation, letter processing, or any other operation. For each record read in the map phase, a mapper can produce zero, one or more records. In this case each letter produces one or more toy forms. This elf-driven letter operation turns unstructured data (a letter) into a structured record (toy form).

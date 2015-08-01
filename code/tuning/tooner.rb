@@ -56,7 +56,7 @@ module Tooner
 
     tunable :fs_block_mb, :integer, units: mb, default: 64, min: 32 do
       ref "Hadoop Operations p 95"
-      ref "Big Data for Chimps -- Tuning"
+      ref "Big Data for Simians -- Tuning"
       cluster 128
     end
 

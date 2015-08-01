@@ -1,4 +1,4 @@
-= Big Data for Chimps
+= Big Data for Simians
 
 include::Ch00-preface.asciidoc[]
 

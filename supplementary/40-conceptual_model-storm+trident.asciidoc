@@ -397,7 +397,7 @@ Weather data: weather stations take immutable observations of atm'c vars, artifi
 
 The core value of your product is a clear, unified exploration of different sites. If products or deals show up multiple times in searches, and inconsistent information is scattered across incomplete pages, users will derive no value from the site
 
-On the other hand, timeliness is also key. I'm writing this before the event, but I confidently predict that the release of "Big Data for Chimps" will set the whole twittersphere abuzz, with glowing reviews from Shaq and Lady Gaga. It's better to have several transiently inconsistent records
+On the other hand, timeliness is also key. I'm writing this before the event, but I confidently predict that the release of "Big Data for Simians" will set the whole twittersphere abuzz, with glowing reviews from Shaq and Lady Gaga. It's better to have several transiently inconsistent records
 
 ==== Architecture
 

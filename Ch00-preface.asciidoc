@@ -8,7 +8,7 @@
 [[preface]]
 == Preface
 
-Big Data for Chimps will explain a practical, actionable view of big data. This view will be centered on tested best practices as well as give readers street fighting smarts with Hadoop.
+Big Data for Simians will explain a practical, actionable view of big data. This view will be centered on tested best practices as well as give readers street fighting smarts with Hadoop.
 
 Readers will come away with a useful, conceptual idea of big data. Insight is data in context. The key to understanding big data is scalability: infinite amounts of data can rest upon distinct pivot points. We will teach you how to manipulate data about these pivot points.
 
@@ -17,7 +17,7 @@ Finally, the book will contain examples with real data and real problems that wi
 [[about_coverage]]
 ==== What this book covers ====
 
-'Big Data for Chimps' shows you how to solve important problems in large-scale data processing using simple, fun, elegant tools.
+'Big Data for Simians' shows you how to solve important problems in large-scale data processing using simple, fun, elegant tools.
 
 Finding patterns in massive event streams is an important, hard problem. Most of the time, there aren't earthquakes -- but the patterns that will let you predict one in advance lie within the data from those quiet periods. How do you compare the trillions of subsequences in billions of events, each to each other, to find the very few that matter? Once you have those patterns, how do you react to them in real-time?
 

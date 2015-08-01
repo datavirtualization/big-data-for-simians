@@ -1,6 +1,6 @@
-## Big Data for Chimps: A Seriously Fun guide to Terabyte-scale data processing
+## Big Data for Simians: A Seriously Fun guide to Terabyte-scale data processing
 
-This is the work-in-progress version of the upcoming O'Reilly book, _Big Data for Chimps: A Seriously Fun guide to Hadoop and Terabyte-scale data processing_.
+This is the work-in-progress version of the upcoming O'Reilly book, _Big Data for Simians: A Seriously Fun guide to Hadoop and Terabyte-scale data processing_.
 
 Our intent is to provide the best guide for _exploratory_ data analytics using Hadoop -- for data science in practice. We use high-level languages (Pig and Ruby) that make Hadoop a tool, not a framework, allowing re-use and rapid development. We'll cover enough Hadoop internals to save you from diving into the source code, and enough tuning advice to let you know where to drill deep.
 
